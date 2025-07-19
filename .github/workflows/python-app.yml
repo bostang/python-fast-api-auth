@@ -38,7 +38,12 @@ jobs:
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest
-      # Command changed to look inside the 'tests/' subdirectory
+      env:
+          # Masukkan secrets sebagai environment variables
+          SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }} # Nama disesuaikan
+          ALGORITHM: ${{ secrets.JWT_ALGORITHM }} # Nama disesuaikan
+          ACCESS_TOKEN_EXPIRE_MINUTES: ${{ secrets.JWT_ACCESS_TOKEN_EXPIRE_MINUTES }} # Nama disesuaikan
+        # Command changed to look inside the 'tests/' subdirectory
       # Removed 'working-directory' as files are at the repository root
       run: |
         PYTHONPATH=. pytest -v tests/
