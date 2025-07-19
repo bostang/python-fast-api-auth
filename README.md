@@ -15,6 +15,9 @@ pip install -r requirements.txt
 # LANGKAH 2 : Jalankan aplikasi
 uvicorn main:app --reload
 
+# KETIKA SELESAI, non-aktifkan lagi virtual environment dengan:
+deactivate
+
 ```
 
 ## Cara Pengujian

@@ -2,12 +2,18 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+# from passlib.context import CryptContext  # DEPRECATED
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 
+from datetime import datetime, timedelta
+from datetime import UTC
+
 from models import TokenData
+
+from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError
 
 # Import load_dotenv
 from dotenv import load_dotenv
@@ -25,21 +31,43 @@ if not SECRET_KEY:
     raise ValueError("SECRET_KEY environment variable not set. Please set it in your .env file or environment.")
 
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto") # DEPRECATED
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+ph = PasswordHasher()
+
+# DEPRECATED : DeprecationWarning: 'crypt' is deprecated and slated for removal in Python 3.13
+# def verify_password(plain_password: str, hashed_password: str) -> bool:
+#     return pwd_context.verify(plain_password, hashed_password)
+
+# def get_password_hash(password: str) -> str:
+#     return pwd_context.hash(password)
+
 
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    # Menggunakan Argon2 untuk menghash kata sandi
+    return ph.hash(password)
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    try:
+        # Memverifikasi kata sandi
+        ph.verify(hashed_password, plain_password)
+        return True
+    except VerifyMismatchError:
+        # Jika kata sandi tidak cocok
+        return False
+    except Exception as e:
+        # Penanganan error lainnya (misalnya, hash tidak valid)
+        print(f"Error verifying password: {e}")
+        return False
+
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(UTC) + expires_delta # <--- Gunakan UTC di sini
     else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(UTC) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES) # <--- Gunakan UTC di sini
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
