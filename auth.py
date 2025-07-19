@@ -20,6 +20,7 @@ from dotenv import load_dotenv
 import os
 
 # Muat variabel lingkungan dari .env
+
 # load_dotenv()     # UNTUK PENGEMBANGAN SECARA LOKAL.
 
 # Konfigurasi diambil dari variabel lingkungan

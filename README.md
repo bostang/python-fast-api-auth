@@ -44,7 +44,6 @@ curl -X POST "http://127.0.0.1:8000/api/auth/login" \
 curl -X GET "http://127.0.0.1:8000/api/users/me" \
 -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 ```
-
 ## Pytest
 
 Untuk melakukan testing menggunakan pytest (script telah disiapkan di `/tests/test_auth.py`), lakukan:
