@@ -44,3 +44,39 @@ curl -X POST "http://127.0.0.1:8000/api/auth/login" \
 curl -X GET "http://127.0.0.1:8000/api/users/me" \
 -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 ```
+
+## Pytest
+
+Untuk melakukan testing menggunakan pytest (script telah disiapkan di `/tests/test_auth.py`), lakukan:
+
+```bash
+pytest
+```
+
+## Catatan tentang `.env` dan _secrets_
+
+Ketika pengujian di lokal, buat `.env` di _root_ project directory dengan isi :
+
+```conf
+JWT_SECRET_KEY="your_super_secret_key_from_env"
+JWT_ALGORITHM="HS256"
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
+SONAR_TOKEN="xxx"       # gunakan untuk SONAR CLOUD SCANNING. APABILA TIDAK BUTUH, HAPUS SAJA.
+```
+
+pastikan `.env` ada pada `.gitignore`. Ketika melakukan github workflow, simpan pada _serets_ dan panggil pada `.yml` workflow:
+
+```yaml
+    env:
+        # Masukkan secrets sebagai environment variables
+        SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }} # Nama disesuaikan
+        ALGORITHM: ${{ secrets.JWT_ALGORITHM }} # Nama disesuaikan
+        ACCESS_TOKEN_EXPIRE_MINUTES: ${{ secrets.JWT_ACCESS_TOKEN_EXPIRE_MINUTES }} # Nama disesuaikan
+      run: |
+```
+
+![cara-membuat-repository-secrets](./img/cara-membuat-repository-secrets.png)
+
+tampilan repo secrests yang sudah dibuat:
+
+![tampilan-repository-secrets-yang-sudah-dibuat](./img/tampilan-repository-secrets-yang-sudah-dibuat.png)
