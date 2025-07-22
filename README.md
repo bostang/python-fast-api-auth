@@ -20,6 +20,8 @@ deactivate
 
 ```
 
+> **catatan** : apabila `python` tidak ditemukan, kemungkinan yang terinstall adalah `python3` sehingga gunakan `python3` dan juga `pip3`. Pastikan juga `python3-venv` terinstall dengan `sudo apt install python3.12-venv`.
+
 ## Cara Pengujian
 
 - register
@@ -44,13 +46,18 @@ curl -X POST "http://127.0.0.1:8000/api/auth/login" \
 curl -X GET "http://127.0.0.1:8000/api/users/me" \
 -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 ```
+
 ## Pytest
 
 Untuk melakukan testing menggunakan pytest (script telah disiapkan di `/tests/test_auth.py`), lakukan:
 
 ```bash
-pytest
+PYTHONPATH=. pytest -v tests/
 ```
+
+## API Documentation
+
+FastAPI automatically generates interactive API documentation for you, thanks to its underlying libraries like Starlette and Pydantic, and the integration of Swagger UI (OpenAPI) and ReDoc. Akses dapat dilakukan pada : **`http://127.0.0.1:8000/docs/`**
 
 ## Catatan tentang `.env` dan _secrets_
 
