@@ -5,7 +5,30 @@ from models import UserIn, UserOut, Token, UserLogin # <--- Tambahkan UserLogin 
 from auth import get_password_hash, verify_password, create_access_token, get_current_user
 from typing import Dict
 
+from fastapi.middleware.cors import CORSMiddleware # Import CORSMiddleware
+
+
 app = FastAPI()
+
+# Konfigurasi CORS
+# Origins yang diizinkan untuk mengakses API Anda.
+# Sesuaikan ini dengan URL frontend Anda saat development dan production.
+# Untuk development, biasanya http://localhost:3000 (Create React App) atau http://localhost:5173 (Vite)
+origins = [
+    "http://localhost",
+    "http://localhost:3000", # Tambahkan origin frontend React Anda di sini (untuk Create React App)
+    "http://localhost:5173", # Tambahkan origin frontend React Anda di sini (untuk Vite)
+    "http://127.0.0.1:3000", # Jika Anda menggunakan 127.0.0.1 di browser
+    "http://127.0.0.1:5173", # Jika Anda menggunakan 127.0.0.1 di browser
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins, # Mengizinkan origins tertentu
+    allow_credentials=True, # Mengizinkan kredensial (seperti cookies, header Authorization)
+    allow_methods=["*"], # Mengizinkan semua metode HTTP (GET, POST, PUT, DELETE, dll.)
+    allow_headers=["*"], # Mengizinkan semua header
+)
 
 fake_users_db: Dict[str, dict] = {}
 
