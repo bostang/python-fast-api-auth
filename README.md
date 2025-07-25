@@ -46,6 +46,20 @@ alembic upgrade head
 
 ```
 
+## Build Docker Image & Push ke DockerHub (registry)
+
+```bash
+# pastikan sedang berada di direktori `/python-fast-api-auth`
+# build
+docker build -t bostang/fastapi-auth-app:latest .
+
+# jika belum dilakukan login pada terminal, lakukan : `docker login`
+
+# push
+docker push bostang/fastapi-auth-app:latest
+
+```
+
 ## Cara Pengujian
 
 - register
