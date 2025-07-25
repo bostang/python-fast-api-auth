@@ -19,6 +19,10 @@ from argon2.exceptions import VerifyMismatchError
 from dotenv import load_dotenv
 import os
 
+from models import TokenData, User # Import User
+from database import get_db # Import get_db
+from sqlalchemy.orm import Session # Import Session
+
 # Muat variabel lingkungan dari .env
 
 load_dotenv()     # UNTUK PENGEMBANGAN SECARA LOKAL.
@@ -73,7 +77,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-async def get_current_user(token: str = Depends(oauth2_scheme)):
+async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)): # Tambahkan db: Session
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -87,7 +91,10 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         token_data = TokenData(username=username)
     except JWTError:
         raise credentials_exception
-    user = {"username": token_data.username, "email": f"{token_data.username}@example.com"}
+
+    # Ambil user dari database
+    user = db.query(User).filter(User.username == token_data.username).first()
     if user is None:
         raise credentials_exception
-    return user
+    # Kembalikan dict yang sesuai dengan apa yang Anda gunakan di main.py saat ini
+    return {"username": user.username, "email": user.email}

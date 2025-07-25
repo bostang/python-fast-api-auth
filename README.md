@@ -6,8 +6,8 @@
 
 ```bash
 # LANGKAH 0 : Buat virtual environment
-python -m venv venv
-source venv/bin/activate
+python -m venv venv         # <-- KALAU SUDAH ADA FOLDER venv, tidak perlu lakukan baris ini
+source venv/bin/activate    # aktifkan virtual environment
 
 # LANGKAH 1 : Install dependency
 pip install -r requirements.txt
@@ -21,6 +21,30 @@ deactivate
 ```
 
 > **catatan** : apabila `python` tidak ditemukan, kemungkinan yang terinstall adalah `python3` sehingga gunakan `python3` dan juga `pip3`. Pastikan juga `python3-venv` terinstall dengan `sudo apt install python3.12-venv`.
+
+## PostgreSQL
+
+```bash
+# Inisialisasi Alembic
+alembic init alembic
+
+# ubah alembic/env.py
+
+# buat database
+psql -U postgres
+
+# di dalam konsol psql :
+CREATE DATABASE py_auth_db;
+\q  # keluar dari konsol psql
+
+
+# migrasi database pertama (akan membua tabel : alembic_version di db kita)
+alembic revision --autogenerate -m "Create users table"
+
+# menerapkan migrasi dan membuat tabel users di database
+alembic upgrade head
+
+```
 
 ## Cara Pengujian
 
