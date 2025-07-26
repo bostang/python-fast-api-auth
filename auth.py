@@ -23,6 +23,8 @@ from models import TokenData, User # Import User
 from database import get_db # Import get_db
 from sqlalchemy.orm import Session # Import Session
 
+from sqlalchemy import select
+
 # Muat variabel lingkungan dari .env
 
 load_dotenv()     # UNTUK PENGEMBANGAN SECARA LOKAL.
@@ -93,7 +95,9 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
         raise credentials_exception
 
     # Ambil user dari database
-    user = db.query(User).filter(User.username == token_data.username).first()
+    # user = db.query(User).filter(User.username == token_data.username).first()    # deprecated for testing
+    result = await db.execute(select(User).filter(User.username == token_data.username))
+    user = result.scalars().first()
     if user is None:
         raise credentials_exception
     # Kembalikan dict yang sesuai dengan apa yang Anda gunakan di main.py saat ini

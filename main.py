@@ -10,6 +10,8 @@ from database import get_db # Import get_db dari database.py
 
 import os
 
+from sqlalchemy import select
+
 app = FastAPI()
 
 # Konfigurasi CORS (tetap sama)
@@ -41,7 +43,9 @@ app.add_middleware(
 @app.post("/api/auth/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
 async def register(user: UserIn, db: Session = Depends(get_db)): # Tambahkan db: Session
     # Cek apakah username sudah terdaftar
-    db_user_by_username = db.query(User).filter(User.username == user.username).first()
+    # db_user_by_username = db.query(User).filter(User.username == user.username).first() # deprecated for testing
+    result = await db.execute(select(User).filter(User.username == user.username))
+    db_user_by_username = result.scalars().first()
     if db_user_by_username:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -49,7 +53,9 @@ async def register(user: UserIn, db: Session = Depends(get_db)): # Tambahkan db:
         )
 
     # Cek apakah email sudah terdaftar
-    db_user_by_email = db.query(User).filter(User.email == user.email).first()
+    # db_user_by_email = db.query(User).filter(User.email == user.email).first()
+    result = await db.execute(select(User).filter(User.email == user.email))
+    db_user_by_email = result.scalars().first()
     if db_user_by_email:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -71,7 +77,10 @@ async def register(user: UserIn, db: Session = Depends(get_db)): # Tambahkan db:
 
 @app.post("/api/auth/login", response_model=Token)
 async def login(user_in: UserLogin, db: Session = Depends(get_db)): # Tambahkan db: Session
-    db_user = db.query(User).filter(User.username == user_in.username).first()
+    
+    # db_user = db.query(User).filter(User.username == user_in.username).first()        # deprecated for testing
+    result = await db.execute(select(User).filter(User.username == user_in.username))
+    db_user = result.scalars().first()
 
     if not db_user or not verify_password(user_in.password, db_user.hashed_password):
         raise HTTPException(
