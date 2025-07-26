@@ -1,32 +1,84 @@
 import pytest
-from pytest_asyncio import fixture as pytest_asyncio_fixture
+import os
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.orm import declarative_base
+from fastapi.testclient import TestClient
+from main import app, get_db, Base # Asumsi Base dan get_db diekspos dari main.py atau database.py Anda
 
-from fastapi.testclient import TestClient # <--- Sudah benar
+# Konfigurasi URL database pengujian dari variabel lingkungan
+# Penting: Pastikan Anda memiliki database terpisah untuk pengujian (misalnya, py_auth_db_test)
+# untuk menghindari penghapusan data dari database pengembangan/produksi Anda.
+TEST_DATABASE_URL = (
+    f"postgresql+asyncpg://{os.environ.get('DB_USER')}:"
+    f"{os.environ.get('DB_PASSWORD')}@"
+    f"{os.environ.get('DB_HOST')}:"
+    f"{os.environ.get('DB_PORT')}/"
+    f"{os.environ.get('DB_NAME')}_test" # Menggunakan nama database _test
+)
 
-from main import app, fake_users_db
-from auth import get_password_hash
+# Buat engine asinkron untuk database pengujian
+test_engine = create_async_engine(TEST_DATABASE_URL, echo=False)
 
-@pytest_asyncio_fixture(name="client")
+# Buat sessionmaker asinkron untuk database pengujian
+TestingSessionLocal = async_sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=test_engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+)
+
+# Dependency override untuk pengujian:
+# Fungsi ini akan menggantikan get_db yang sebenarnya di aplikasi FastAPI
+# selama pengujian, memastikan bahwa semua operasi database menggunakan
+# sesi dari database pengujian dan di-rollback setelah setiap tes.
+async def override_get_db():
+    async with TestingSessionLocal() as session:
+        # Mulai transaksi untuk setiap tes
+        async with session.begin():
+            yield session
+            # Rollback transaksi setelah tes selesai untuk membersihkan data
+            # Ini memastikan setiap tes dimulai dengan database yang bersih
+            await session.rollback()
+
+# Fixture pytest untuk menyiapkan TestClient dan mengelola database pengujian
+# Scope "function" berarti fixture ini akan dijalankan sebelum dan sesudah setiap fungsi tes.
+@pytest.fixture(name="client", scope="function")
 async def client_fixture():
-    fake_users_db.clear()
+    # 1. Pastikan semua tabel dibuat di database pengujian sebelum tes pertama dijalankan
+    #    Ini hanya akan berjalan sekali per modul tes jika scope-nya "module" atau "session",
+    #    tetapi dengan "function" scope, ini akan dijalankan sebelum setiap tes.
+    #    Untuk efisiensi, Anda bisa memindahkan create_all/drop_all ke fixture dengan scope "module"
+    #    dan hanya menggunakan rollback di override_get_db untuk membersihkan data.
+    #    Namun, untuk kejelasan awal, kita akan tetap membuatnya di sini.
+    async with test_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    # 2. Ganti dependency get_db aplikasi dengan override_get_db kita
+    app.dependency_overrides[get_db] = override_get_db
+
+    # 3. Yield TestClient untuk digunakan dalam tes
     with TestClient(app=app) as client_sync:
         yield client_sync
+
+    # 4. Setelah semua tes selesai, pastikan semua tabel dihapus dari database pengujian
+    #    Ini penting untuk membersihkan lingkungan pengujian.
+    async with test_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
 
 # --- Tes untuk Endpoint Register ---
 
 @pytest.mark.asyncio
-async def test_register_user_success(client: TestClient): # <-- Ubah ini
+async def test_register_user_success(client: TestClient):
     response = client.post(
         "/api/auth/register",
         json={"username": "testuser", "email": "test@example.com", "password": "password123"}
     )
     assert response.status_code == 201
     assert response.json() == {"username": "testuser", "email": "test@example.com"}
-    assert "testuser" in fake_users_db
-    assert fake_users_db["testuser"]["email"] == "test@example.com"
 
 @pytest.mark.asyncio
-async def test_register_user_already_exists(client: TestClient): # <-- Ubah ini
+async def test_register_user_already_exists(client: TestClient):
     # Register user pertama kali
     client.post(
         "/api/auth/register",
@@ -42,7 +94,7 @@ async def test_register_user_already_exists(client: TestClient): # <-- Ubah ini
     assert response.json() == {"detail": "Username already registered"}
 
 @pytest.mark.asyncio
-async def test_register_email_already_exists(client: TestClient): # <-- Ubah ini
+async def test_register_email_already_exists(client: TestClient):
     # Register user pertama kali
     client.post(
         "/api/auth/register",
@@ -60,7 +112,7 @@ async def test_register_email_already_exists(client: TestClient): # <-- Ubah ini
 # --- Tes untuk Endpoint Login ---
 
 @pytest.mark.asyncio
-async def test_login_user_success(client: TestClient): # <-- Ubah ini
+async def test_login_user_success(client: TestClient):
     # Register user terlebih dahulu
     client.post(
         "/api/auth/register",
@@ -76,7 +128,7 @@ async def test_login_user_success(client: TestClient): # <-- Ubah ini
     assert response.json()["token_type"] == "bearer"
 
 @pytest.mark.asyncio
-async def test_login_user_invalid_password(client: TestClient): # <-- Ubah ini
+async def test_login_user_invalid_password(client: TestClient):
     # Register user terlebih dahulu
     client.post(
         "/api/auth/register",
@@ -91,7 +143,7 @@ async def test_login_user_invalid_password(client: TestClient): # <-- Ubah ini
     assert response.json() == {"detail": "Incorrect username or password"}
 
 @pytest.mark.asyncio
-async def test_login_user_not_registered(client: TestClient): # <-- Ubah ini
+async def test_login_user_not_registered(client: TestClient):
     response = client.post(
         "/api/auth/login",
         json={"username": "nonexistentuser", "password": "anypassword"}
@@ -102,7 +154,7 @@ async def test_login_user_not_registered(client: TestClient): # <-- Ubah ini
 # --- Tes untuk Endpoint yang Dilindungi (misal: /api/users/me) ---
 
 @pytest.mark.asyncio
-async def test_access_protected_endpoint_success(client: TestClient): # <-- Ubah ini
+async def test_access_protected_endpoint_success(client: TestClient):
     # Register user dan login untuk mendapatkan token
     client.post(
         "/api/auth/register",
@@ -120,17 +172,21 @@ async def test_access_protected_endpoint_success(client: TestClient): # <-- Ubah
         headers={"Authorization": f"Bearer {token}"}
     )
     assert response.status_code == 200
-    # assert response.json() == {"username": "protecteduser", "email": "protected@example.com"}
-    assert response.json() == {"username": "protecteduser", "email": "protecteduser@example.com"}
+    # Periksa kunci dan nilai tertentu karena respons mungkin mengandung lebih dari username dan email
+    response_data = response.json()
+    assert "username" in response_data
+    assert "email" in response_data
+    assert response_data["username"] == "protecteduser"
+    assert response_data["email"] == "protected@example.com"
 
 @pytest.mark.asyncio
-async def test_access_protected_endpoint_no_token(client: TestClient): # <-- Ubah ini
+async def test_access_protected_endpoint_no_token(client: TestClient):
     response = client.get("/api/users/me")
     assert response.status_code == 401
     assert response.json() == {"detail": "Not authenticated"}
 
 @pytest.mark.asyncio
-async def test_access_protected_endpoint_invalid_token(client: TestClient): # <-- Ubah ini
+async def test_access_protected_endpoint_invalid_token(client: TestClient):
     response = client.get(
         "/api/users/me",
         headers={"Authorization": "Bearer invalid.token.here"}
