@@ -48,19 +48,21 @@ async def override_get_db():
 @pytest.fixture(scope="module", autouse=True)
 async def setup_test_db():
     # Pastikan app.dependency_overrides diatur sebelum memulai operasi DB
-    # Ini penting agar `get_db` selama `create_all` menggunakan `TestingSessionLocal`
     app.dependency_overrides[get_db] = override_get_db
 
-    # Drop dan buat ulang semua tabel untuk memastikan database bersih
-    async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all) # Drop existing tables
-        await conn.run_sync(Base.metadata.create_all) # Create new tables
+    # TIDAK PERLU lagi Base.metadata.drop_all() dan create_all() di sini,
+    # karena Alembic akan menangani pembuatan skema di workflow YAML.
+    # Kita hanya perlu memastikan bahwa database sudah siap untuk menerima koneksi.
+
     yield
     # Setelah semua tes selesai, bersihkan dependency override
     app.dependency_overrides.clear()
-    # Opsional: Drop semua tabel lagi setelah semua tes selesai
-    async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+    # Opsional: Jika Anda ingin memastikan database pengujian benar-benar bersih
+    # setelah semua tes (misalnya untuk run lokal), Anda bisa tambahkan drop_all di sini.
+    # Namun, untuk CI, biasanya cukup dengan memulai dengan database yang di-upgrade Alembic
+    # pada setiap run job yang baru.
+    # async with test_engine.begin() as conn:
+    #     await conn.run_sync(Base.metadata.drop_all)
 
 
 # Fixture pytest untuk menyiapkan TestClient
@@ -68,11 +70,9 @@ async def setup_test_db():
 # Ini akan dijalankan sebelum setiap fungsi tes.
 @pytest.fixture(name="client", scope="function")
 def client_fixture(): # setup_test_db diatur sebagai autouse=True, jadi tidak perlu di-pass di sini
-    # app.dependency_overrides[get_db] = override_get_db # Ini sudah diatur di setup_test_db
     # Yield TestClient untuk digunakan dalam tes
     with TestClient(app=app) as client_sync:
         yield client_sync
-    # app.dependency_overrides.clear() # Ini sudah diatur di setup_test_db
 
 
 # --- Tes untuk Endpoint Register ---
