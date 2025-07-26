@@ -42,30 +42,30 @@ async def override_get_db():
             # Ini memastikan setiap tes dimulai dengan database yang bersih
             await session.rollback()
 
-# Fixture pytest untuk menyiapkan TestClient dan mengelola database pengujian
-# Scope "function" berarti fixture ini akan dijalankan sebelum dan sesudah setiap fungsi tes.
-@pytest.fixture(name="client", scope="function")
-async def client_fixture():
-    # 1. Pastikan semua tabel dibuat di database pengujian sebelum tes pertama dijalankan
-    #    Ini hanya akan berjalan sekali per modul tes jika scope-nya "module" atau "session",
-    #    tetapi dengan "function" scope, ini akan dijalankan sebelum setiap tes.
-    #    Untuk efisiensi, Anda bisa memindahkan create_all/drop_all ke fixture dengan scope "module"
-    #    dan hanya menggunakan rollback di override_get_db untuk membersihkan data.
-    #    Namun, untuk kejelasan awal, kita akan tetap membuatnya di sini.
+# Fixture pytest asinkron untuk menyiapkan dan membersihkan database
+# Scope "module" berarti ini akan dijalankan sekali sebelum semua tes dalam modul
+# dan sekali setelah semua tes selesai.
+@pytest.fixture(scope="module", autouse=True)
+async def setup_test_db():
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-
-    # 2. Ganti dependency get_db aplikasi dengan override_get_db kita
-    app.dependency_overrides[get_db] = override_get_db
-
-    # 3. Yield TestClient untuk digunakan dalam tes
-    with TestClient(app=app) as client_sync:
-        yield client_sync
-
-    # 4. Setelah semua tes selesai, pastikan semua tabel dihapus dari database pengujian
-    #    Ini penting untuk membersihkan lingkungan pengujian.
+    yield
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
+
+# Fixture pytest untuk menyiapkan TestClient
+# Fixture ini sekarang sinkron karena TestClient adalah sinkron.
+# Ini akan dijalankan sebelum setiap fungsi tes.
+@pytest.fixture(name="client", scope="function")
+def client_fixture(setup_test_db): # Tergantung pada setup_test_db untuk memastikan DB siap
+    # Ganti dependency get_db aplikasi dengan override_get_db kita
+    app.dependency_overrides[get_db] = override_get_db
+    # Yield TestClient untuk digunakan dalam tes
+    with TestClient(app=app) as client_sync:
+        yield client_sync
+    # Setelah tes selesai, hapus dependency override untuk membersihkan
+    app.dependency_overrides.clear()
+
 
 # --- Tes untuk Endpoint Register ---
 
