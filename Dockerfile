@@ -17,3 +17,11 @@ EXPOSE 8000
 
 # Command to run your FastAPI application with Uvicorn
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+
+# Catatan:
+# jalankan docker build dari folder python-fast-api-auth
+# docker build -t your_dockerhub_username/auth-app-backend:latest .
+# Gantilah `your_dockerhub_username` dengan username Docker Hub Anda.
+# Setelah itu, Anda bisa push ke Docker Hub:
+# docker push your_dockerhub_username/auth-app-backend:latest

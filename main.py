@@ -8,17 +8,25 @@ from models import UserIn, UserOut, Token, UserLogin, User # Import model User S
 from auth import get_password_hash, verify_password, create_access_token, get_current_user
 from database import get_db # Import get_db dari database.py
 
+import os
+
 app = FastAPI()
 
 # Konfigurasi CORS (tetap sama)
-origins = [
-    "http://localhost",
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:5173",
-]
+cors_origins_str = os.getenv("CORS_ORIGINS", "")
+origins = [origin.strip() for origin in cors_origins_str.split(',') if origin.strip()]
 
+# Tambahkan localhost untuk pengembangan lokal jika variabel lingkungan tidak disetel
+if not origins:
+    origins = [
+        "http://localhost",
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
+    ]
+
+# Tambahkan middleware CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
