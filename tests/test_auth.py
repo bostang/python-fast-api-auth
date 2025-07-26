@@ -3,7 +3,8 @@ import os
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base
 from fastapi.testclient import TestClient
-from main import app, get_db, Base # Asumsi Base dan get_db diekspos dari main.py atau database.py Anda
+from main import app # Hanya import app dari main.py
+from database import get_db, Base # Asumsi Base dan get_db diekspos dari database.py Anda
 
 # Konfigurasi URL database pengujian dari variabel lingkungan
 # Penting: Pastikan Anda memiliki database terpisah untuk pengujian (misalnya, py_auth_db_test)
