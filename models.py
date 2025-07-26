@@ -1,6 +1,7 @@
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import Column, Integer, String
-from sqlalchemy.ext.declarative import declarative_base
+# from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 
 # Kita menggunakan Base dari database.py
 Base = declarative_base()
